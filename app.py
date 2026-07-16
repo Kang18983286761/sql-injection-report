@@ -1,5 +1,7 @@
 import sqlite3
 import os
+import urllib.request
+import urllib.error
 from flask import Flask, render_template, request, redirect, session, flash, url_for
 from werkzeug.utils import secure_filename
 
@@ -383,6 +385,81 @@ def page():
         user_info["username"] = username
 
     return render_template("index.html", user_info=user_info, page_content=page_content, page_name=page_name)
+
+# URL 抓取
+@app.route("/fetch-url", methods=["POST"])
+def fetch_url():
+    # 检查是否登录
+    username = session.get("username")
+    if not username:
+        flash("请先登录")
+        return redirect("/login")
+
+    # 🚨 漏洞：从表单获取 URL，不做任何限制或过滤
+    url = request.form.get("url", "")
+    
+    print(f"[DEBUG] URL 抓取请求 - URL: {url}")
+
+    if not url:
+        flash("URL 不能为空")
+        return redirect("/")
+
+    fetch_result = None
+    fetch_error = None
+    status_code = None
+
+    try:
+        # 🚨 漏洞：直接将用户输入的 URL 传给 urlopen()
+        # 🚨 漏洞：不限制 URL 的协议（支持 file://、dict:// 等）
+        # 🚨 漏洞：不阻止内网 IP（127.0.0.1、10.x.x.x、192.168.x.x）
+        # 🚨 漏洞：不设置任何代理或防火墙检查
+        
+        print(f"[DEBUG] 尝试抓取 URL: {url}")
+        
+        # 创建请求对象
+        req = urllib.request.Request(url)
+        
+        # 🚨 漏洞：直接打开用户提供的 URL，超时 10 秒
+        with urllib.request.urlopen(req, timeout=10) as response:
+            status_code = response.status
+            content = response.read().decode('utf-8', errors='ignore')
+            
+            # 只返回前 5000 字符
+            content_preview = content[:5000]
+            if len(content) > 5000:
+                content_preview += "\n\n... (内容已截断，仅显示前 5000 字符)"
+            
+            fetch_result = {
+                "url": url,
+                "status_code": status_code,
+                "content_length": len(content),
+                "content": content_preview
+            }
+            
+            print(f"[DEBUG] URL 抓取成功 - 状态码: {status_code}, 内容长度: {len(content)}")
+            
+    except urllib.error.HTTPError as e:
+        fetch_error = f"HTTP 错误: {e.code} {e.reason}"
+        status_code = e.code
+        print(f"[DEBUG] HTTP 错误: {e.code} {e.reason}")
+    except urllib.error.URLError as e:
+        fetch_error = f"URL 错误: {e.reason}"
+        print(f"[DEBUG] URL 错误: {e.reason}")
+    except Exception as e:
+        fetch_error = f"抓取失败: {str(e)}"
+        print(f"[DEBUG] 抓取失败: {str(e)}")
+
+    # 获取当前登录用户信息
+    user_info = None
+    if username in USERS:
+        user_info = USERS[username]
+        user_info["username"] = username
+
+    return render_template("index.html", 
+                           user_info=user_info, 
+                           fetch_result=fetch_result, 
+                           fetch_error=fetch_error,
+                           fetch_url_value=url)
 
 if __name__ == "__main__":
     init_db()

@@ -23,6 +23,41 @@
         <a href="/page?name=help" class="btn btn-secondary">帮助中心</a>
     </div>
 
+    <!-- URL 抓取功能 -->
+    <div class="fetch-section">
+        <h3>URL 抓取工具</h3>
+        <form method="POST" action="/fetch-url" class="fetch-form">
+            <div class="form-group">
+                <label for="url">目标 URL</label>
+                <input type="text" id="url" name="url" placeholder="输入要抓取的 URL（支持 http://、https://、file:// 等）" value="{{ fetch_url_value or '' }}" required>
+            </div>
+            <button type="submit" class="btn">抓取</button>
+        </form>
+        <p class="fetch-tip">提示：支持多种协议，包括 http://、https://、file:// 等</p>
+
+        <!-- 抓取结果 -->
+        {% if fetch_result %}
+        <div class="fetch-result">
+            <h4>抓取结果</h4>
+            <div class="result-info">
+                <p><strong>目标 URL：</strong>{{ fetch_result.url }}</p>
+                <p><strong>状态码：</strong><span class="status-code">{{ fetch_result.status_code }}</span></p>
+                <p><strong>内容长度：</strong>{{ fetch_result.content_length }} 字符</p>
+            </div>
+            <div class="result-content">
+                <h5>响应内容（前 5000 字符）：</h5>
+                <pre>{{ fetch_result.content }}</pre>
+            </div>
+        </div>
+        {% elif fetch_error %}
+        <div class="fetch-error">
+            <h4>抓取失败</h4>
+            <p><strong>目标 URL：</strong>{{ fetch_url_value }}</p>
+            <p><strong>错误信息：</strong>{{ fetch_error }}</p>
+        </div>
+        {% endif %}
+    </div>
+
     <!-- 动态页面内容显示区域 -->
     {% if page_content %}
     <div class="page-content">

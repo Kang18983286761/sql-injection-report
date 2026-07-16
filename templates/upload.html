@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>上传头像</h2>
+
+    {% if user_info %}
+    <p class="upload-info">当前用户：{{ user_info.username }}</p>
+    {% endif %}
+
+    {% if error %}
+    <div class="error-msg">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="/upload" enctype="multipart/form-data" class="upload-form">
+        <div class="form-group">
+            <label for="file">选择文件</label>
+            <input type="file" id="file" name="file" required>
+        </div>
+        <button type="submit" class="btn">上传</button>
+    </form>
+
+    <!-- 上传成功后显示预览 -->
+    {% if file_url %}
+    <div class="upload-success">
+        <h3>上传成功！</h3>
+        <p><strong>文件路径：</strong><a href="{{ file_url }}" target="_blank">{{ file_url }}</a></p>
+        <div class="preview-section">
+            <h4>图片预览：</h4>
+            <img src="{{ file_url }}" alt="上传的图片" class="preview-image">
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="upload-tips">
+        <h4>上传说明：</h4>
+        <ul>
+            <li>支持上传图片文件</li>
+            <li>文件大小限制：16MB</li>
+            <li>上传成功后可查看预览</li>
+        </ul>
+    </div>
+
+    <a href="/" class="btn btn-secondary">返回首页</a>
+</div>
+{% endblock %}

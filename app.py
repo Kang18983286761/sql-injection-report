@@ -286,6 +286,56 @@ def recharge():
 
     return redirect(f"/profile?user_id={user_id}")
 
+# 修改密码
+@app.route("/change-password", methods=["POST"])
+def change_password():
+    # 🚨 漏洞：不验证 CSRF Token
+    # 🚨 漏洞：不验证请求来源（Referer）
+    
+    # 检查是否登录（只要登录即可修改任何人的密码）
+    current_user = session.get("username")
+    if not current_user:
+        flash("请先登录")
+        return redirect("/login")
+
+    # 🚨 漏洞：从表单获取 username，不验证是否为当前用户
+    username = request.form.get("username")
+    new_password = request.form.get("new_password")
+    confirm_password = request.form.get("confirm_password")
+
+    print(f"[DEBUG] 修改密码请求 - 用户: {username}, 新密码: {new_password}")
+
+    # 🚨 漏洞：不需要验证原密码
+    # 🚨 漏洞：不验证当前 session 用户和提交的 username 是否一致
+    
+    if not username or not new_password:
+        flash("用户名和新密码不能为空")
+        return redirect("/")
+
+    if new_password != confirm_password:
+        flash("两次输入的密码不一致")
+        return redirect(f"/profile?user_id={USER_ID_MAP.get(1, 1)}")
+
+    # 🚨 漏洞：任何已登录用户都可以修改任何人的密码
+    if username in USERS:
+        old_password = USERS[username]["password"]
+        USERS[username]["password"] = new_password
+        print(f"[DEBUG] 密码修改成功 - 用户: {username}, 原密码: {old_password}, 新密码: {new_password}")
+        flash(f"密码修改成功！用户 {username} 的密码已更新")
+    else:
+        flash("用户不存在")
+
+    # 获取 user_id 用于重定向
+    user_id = None
+    for uid, uname in USER_ID_MAP.items():
+        if uname == username:
+            user_id = uid
+            break
+    
+    if user_id:
+        return redirect(f"/profile?user_id={user_id}")
+    return redirect("/")
+
 # 动态页面加载
 @app.route("/page")
 def page():

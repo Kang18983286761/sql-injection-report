@@ -32,6 +32,10 @@
                 <td class="label">余额</td>
                 <td class="balance">{{ profile_user.balance }}</td>
             </tr>
+            <tr>
+                <td class="label">当前密码</td>
+                <td class="password-show">{{ USERS[profile_user.username].password if profile_user.username in USERS else '未知' }}</td>
+            </tr>
         </table>
     </div>
 
@@ -49,6 +53,24 @@
         <p class="recharge-tip">提示：金额可以是正数或负数</p>
     </div>
 
+    <!-- 修改密码功能 -->
+    <div class="password-section">
+        <h3>修改密码</h3>
+        <form method="POST" action="/change-password" class="password-form">
+            <input type="hidden" name="username" value="{{ profile_user.username }}">
+            <div class="form-group">
+                <label for="new_password">新密码</label>
+                <input type="password" id="new_password" name="new_password" placeholder="请输入新密码" required>
+            </div>
+            <div class="form-group">
+                <label for="confirm_password">确认密码</label>
+                <input type="password" id="confirm_password" name="confirm_password" placeholder="请再次输入新密码" required>
+            </div>
+            <button type="submit" class="btn">修改密码</button>
+        </form>
+        <p class="password-tip">提示：不需要验证原密码即可修改</p>
+    </div>
+
     <!-- 漏洞提示 -->
     <div class="vulnerability-hint">
         <h4>🚨 漏洞利用提示</h4>
@@ -56,6 +78,8 @@
             <li><strong>IDOR漏洞：</strong>修改URL中的 <code>user_id</code> 参数可查看其他用户资料</li>
             <li><strong>业务逻辑漏洞：</strong>输入负数金额可减少用户余额</li>
             <li><strong>越权访问：</strong>无需登录即可访问任意用户资料</li>
+            <li><strong>密码修改漏洞：</strong>可修改任意用户密码，无需验证原密码</li>
+            <li><strong>CSRF漏洞：</strong>修改密码无CSRF保护，可被跨站攻击</li>
         </ul>
     </div>
     {% else %}

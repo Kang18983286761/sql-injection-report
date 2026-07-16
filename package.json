@@ -1,0 +1,23 @@
+{
+  "name": "6a5876df7f4af3e9b0599c10",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kang18983286761/sql-injection-report.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Kang18983286761/sql-injection-report/issues"
+  },
+  "homepage": "https://github.com/Kang18983286761/sql-injection-report#readme",
+  "dependencies": {
+    "docx": "^9.7.1"
+  }
+}

@@ -15,6 +15,47 @@
             <li><strong>余额：</strong>{{ user_info.balance }}</li>
         </ul>
     </div>
+
+    <!-- 搜索功能 -->
+    <div class="search-section">
+        <h3>搜索用户</h3>
+        <form method="GET" action="/search" class="search-form">
+            <input type="text" name="keyword" placeholder="输入用户名或邮箱搜索..." value="{{ keyword or '' }}">
+            <button type="submit" class="btn">搜索</button>
+        </form>
+
+        <!-- 搜索结果 -->
+        {% if keyword %}
+        <div class="search-results">
+            <h4>搜索结果（关键词：{{ keyword }}）</h4>
+            {% if results %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>用户名</th>
+                        <th>邮箱</th>
+                        <th>手机</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in results %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>{{ user.phone }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="no-results">无搜索结果</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
     <a href="/logout" class="btn">退出登录</a>
     {% else %}
     <h2>请先登录</h2>

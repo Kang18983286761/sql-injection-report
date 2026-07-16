@@ -3,7 +3,7 @@ import os
 from flask import Flask, render_template, request, redirect, session, flash, url_for
 
 app = Flask(__name__)
-app.secret_key = "dev-key-2025"
+app.secret_key = os.environ.get('SECRET_KEY') or 'dev-key-2025'
 
 # 用户数据库（明文存储密码）
 USERS = {
@@ -45,9 +45,15 @@ def init_db():
         )
     ''')
 
-    # 插入默认用户（使用 INSERT OR IGNORE 防止重复插入）
-    cursor.execute("INSERT OR IGNORE INTO users (username, password, email, phone) VALUES ('admin', 'admin123', 'admin@example.com', '13800138000')")
-    cursor.execute("INSERT OR IGNORE INTO users (username, password, email, phone) VALUES ('alice', 'alice2025', 'alice@example.com', '13900139001')")
+    # ✅ 修复：使用参数化查询插入默认用户
+    cursor.execute(
+        "INSERT OR IGNORE INTO users (username, password, email, phone) VALUES (?, ?, ?, ?)",
+        ('admin', 'admin123', 'admin@example.com', '13800138000')
+    )
+    cursor.execute(
+        "INSERT OR IGNORE INTO users (username, password, email, phone) VALUES (?, ?, ?, ?)",
+        ('alice', 'alice2025', 'alice@example.com', '13900139001')
+    )
 
     conn.commit()
     conn.close()
@@ -96,26 +102,30 @@ def logout():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     error = None
-    success = None
 
     if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
-        email = request.form.get("email")
-        phone = request.form.get("phone")
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+        email = request.form.get("email", "").strip()
+        phone = request.form.get("phone", "").strip()
 
+        # ✅ 修复：输入验证
         if not username or not password:
             error = "用户名和密码不能为空"
+        elif len(username) < 3 or len(username) > 50:
+            error = "用户名长度需在3-50个字符之间"
+        elif len(password) < 6:
+            error = "密码长度至少6个字符"
         else:
             try:
                 conn = get_db()
                 cursor = conn.cursor()
 
-                # 🚨 漏洞：使用 f-string 字符串拼接 SQL（存在 SQL 注入）
-                sql = f"INSERT INTO users (username, password, email, phone) VALUES ('{username}', '{password}', '{email}', '{phone}')"
-                print(f"[DEBUG] 执行的 SQL: {sql}")
-
-                cursor.execute(sql)
+                # ✅ 修复：使用参数化查询防止SQL注入
+                cursor.execute(
+                    "INSERT INTO users (username, password, email, phone) VALUES (?, ?, ?, ?)",
+                    (username, password, email, phone)
+                )
                 conn.commit()
                 conn.close()
 
@@ -124,7 +134,8 @@ def register():
             except sqlite3.IntegrityError:
                 error = "用户名已存在"
             except Exception as e:
-                error = f"注册失败: {str(e)}"
+                error = "注册失败，请稍后重试"
+                # 生产环境不应打印详细错误
 
     return render_template("register.html", error=error)
 
@@ -135,18 +146,25 @@ def search():
     if not username:
         return redirect("/login")
 
-    keyword = request.args.get("keyword", "")
+    keyword = request.args.get("keyword", "").strip()
     results = []
 
     if keyword:
+        # ✅ 修复：限制搜索关键词长度
+        if len(keyword) > 100:
+            flash("搜索关键词过长")
+            return redirect("/")
+
         conn = get_db()
         cursor = conn.cursor()
 
-        # 🚨 漏洞：使用 f-string 字符串拼接 SQL（存在 SQL 注入）
-        sql = f"SELECT * FROM users WHERE username LIKE '%{keyword}%' OR email LIKE '%{keyword}%'"
-        print(f"[DEBUG] 执行的 SQL: {sql}")
-
-        cursor.execute(sql)
+        # ✅ 修复：使用参数化查询防止SQL注入
+        # 注意：LIKE的通配符需要在参数中设置，不能在SQL中拼接
+        search_pattern = f"%{keyword}%"
+        cursor.execute(
+            "SELECT * FROM users WHERE username LIKE ? OR email LIKE ?",
+            (search_pattern, search_pattern)
+        )
         rows = cursor.fetchall()
         conn.close()
 
@@ -161,4 +179,5 @@ def search():
 
 if __name__ == "__main__":
     init_db()
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    # 生产环境应关闭 debug=True
+    app.run(debug=True, host="127.0.0.1", port=5000)

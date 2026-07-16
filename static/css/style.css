@@ -145,3 +145,103 @@ body {
     border-radius: 4px;
     margin-bottom: 20px;
 }
+
+/* 成功提示 */
+.flash-msg {
+    background: #efe;
+    color: #2a2;
+    padding: 10px 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+/* 链接文本 */
+.link-text {
+    margin-top: 15px;
+    text-align: center;
+    color: #666;
+}
+
+.link-text a {
+    color: #667eea;
+    text-decoration: none;
+}
+
+.link-text a:hover {
+    text-decoration: underline;
+}
+
+/* 搜索区域 */
+.search-section {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+.search-section h3 {
+    margin-bottom: 15px;
+    color: #555;
+}
+
+.search-form {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.search-form input {
+    flex: 1;
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.search-form input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+/* 搜索结果 */
+.search-results {
+    margin-top: 20px;
+}
+
+.search-results h4 {
+    margin-bottom: 15px;
+    color: #666;
+}
+
+/* 数据表格 */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.data-table th,
+.data-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.data-table th {
+    background: #f5f5f5;
+    font-weight: 600;
+    color: #555;
+}
+
+.data-table tr:hover {
+    background: #f9f9f9;
+}
+
+/* 无结果提示 */
+.no-results {
+    color: #999;
+    text-align: center;
+    padding: 20px;
+    background: #f9f9f9;
+    border-radius: 4px;
+}

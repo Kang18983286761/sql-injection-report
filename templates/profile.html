@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>个人中心</h2>
+
+    {% if profile_user %}
+    <div class="profile-info">
+        <h3>用户资料</h3>
+        <table class="profile-table">
+            <tr>
+                <td class="label">用户ID</td>
+                <td>{{ profile_user.id }}</td>
+            </tr>
+            <tr>
+                <td class="label">用户名</td>
+                <td>{{ profile_user.username }}</td>
+            </tr>
+            <tr>
+                <td class="label">邮箱</td>
+                <td>{{ profile_user.email }}</td>
+            </tr>
+            <tr>
+                <td class="label">手机</td>
+                <td>{{ profile_user.phone }}</td>
+            </tr>
+            <tr>
+                <td class="label">角色</td>
+                <td>{{ profile_user.role }}</td>
+            </tr>
+            <tr>
+                <td class="label">余额</td>
+                <td class="balance">{{ profile_user.balance }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- 充值功能 -->
+    <div class="recharge-section">
+        <h3>账户充值</h3>
+        <form method="POST" action="/recharge" class="recharge-form">
+            <input type="hidden" name="user_id" value="{{ profile_user.id }}">
+            <div class="form-group">
+                <label for="amount">充值金额</label>
+                <input type="number" id="amount" name="amount" step="0.01" placeholder="请输入金额（正数或负数）" required>
+            </div>
+            <button type="submit" class="btn">确认充值</button>
+        </form>
+        <p class="recharge-tip">提示：金额可以是正数或负数</p>
+    </div>
+
+    <!-- 漏洞提示 -->
+    <div class="vulnerability-hint">
+        <h4>🚨 漏洞利用提示</h4>
+        <ul>
+            <li><strong>IDOR漏洞：</strong>修改URL中的 <code>user_id</code> 参数可查看其他用户资料</li>
+            <li><strong>业务逻辑漏洞：</strong>输入负数金额可减少用户余额</li>
+            <li><strong>越权访问：</strong>无需登录即可访问任意用户资料</li>
+        </ul>
+    </div>
+    {% else %}
+    <div class="error-msg">用户不存在</div>
+    {% endif %}
+
+    <a href="/" class="btn btn-secondary">返回首页</a>
+</div>
+{% endblock %}

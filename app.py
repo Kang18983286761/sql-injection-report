@@ -29,6 +29,12 @@ USERS = {
     }
 }
 
+# 用户ID映射（用于IDOR漏洞演示）
+USER_ID_MAP = {
+    1: "admin",
+    2: "alice"
+}
+
 # 数据库路径
 DB_PATH = "data/users.db"
 
@@ -210,6 +216,75 @@ def upload():
                     error = f"上传失败: {str(e)}"
 
     return render_template("upload.html", user_info=user_info, error=error, file_url=file_url)
+
+# 个人中心
+@app.route("/profile")
+def profile():
+    # 🚨 漏洞：从 URL 参数获取 user_id，不验证权限（IDOR 漏洞）
+    user_id = request.args.get("user_id", type=int)
+
+    if not user_id:
+        flash("用户ID不能为空")
+        return redirect("/")
+
+    # 🚨 漏洞：不验证当前登录用户是否有权查看该用户资料
+    # 任何人都可以通过修改 URL 参数查看其他用户的资料
+    profile_user = None
+
+    if user_id in USER_ID_MAP:
+        username = USER_ID_MAP[user_id]
+        if username in USERS:
+            user_data = USERS[username]
+            profile_user = {
+                "id": user_id,
+                "username": username,
+                "email": user_data["email"],
+                "phone": user_data["phone"],
+                "balance": user_data["balance"],
+                "role": user_data["role"]
+            }
+
+    # 获取当前登录用户信息
+    current_username = session.get("username")
+    user_info = None
+    if current_username in USERS:
+        user_info = USERS[current_username]
+        user_info["username"] = current_username
+
+    return render_template("profile.html", user_info=user_info, profile_user=profile_user)
+
+# 充值
+@app.route("/recharge", methods=["POST"])
+def recharge():
+    # 🚨 漏洞：从表单获取 user_id 和 amount，不验证权限
+    user_id = request.form.get("user_id", type=int)
+    amount = request.form.get("amount", type=float)
+
+    print(f"[DEBUG] 充值请求 - user_id: {user_id}, amount: {amount}")
+
+    if not user_id or amount is None:
+        flash("参数错误")
+        return redirect("/")
+
+    # 🚨 漏洞：不验证 amount 是否为负数（可能导致余额减少）
+    # 攻击者可以通过提交负数金额来减少其他用户的余额
+
+    if user_id in USER_ID_MAP:
+        username = USER_ID_MAP[user_id]
+        if username in USERS:
+            # 🚨 漏洞：直接修改余额，不做任何校验
+            old_balance = USERS[username]["balance"]
+            new_balance = old_balance + amount
+            USERS[username]["balance"] = new_balance
+
+            print(f"[DEBUG] 余额更新 - 用户: {username}, 原余额: {old_balance}, 变动: {amount}, 新余额: {new_balance}")
+
+            if amount >= 0:
+                flash(f"充值成功！余额增加 {amount}，当前余额：{new_balance}")
+            else:
+                flash(f"操作成功！余额变动 {amount}，当前余额：{new_balance}")
+
+    return redirect(f"/profile?user_id={user_id}")
 
 if __name__ == "__main__":
     init_db()

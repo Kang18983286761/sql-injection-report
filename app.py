@@ -286,8 +286,58 @@ def recharge():
 
     return redirect(f"/profile?user_id={user_id}")
 
+# 动态页面加载
+@app.route("/page")
+def page():
+    # 🚨 漏洞：从 URL 参数获取页面名称，不做路径校验（路径遍历漏洞）
+    name = request.args.get("name", "")
+
+    if not name:
+        flash("页面名称不能为空")
+        return redirect("/")
+
+    # 🚨 漏洞：直接拼接用户输入到路径中，不检查 "../" 等
+    # 攻击者可以通过 ../../../etc/passwd 等方式读取系统文件
+    filepath = os.path.join("pages", name)
+    print(f"[DEBUG] 尝试读取页面: {filepath}")
+
+    page_content = None
+    page_name = name
+
+    # 尝试读取文件
+    try:
+        # 🚨 漏洞：不使用 os.path.abspath 或 os.path.realpath 规范化路径
+        with open(filepath, 'r', encoding='utf-8') as f:
+            page_content = f.read()
+            print(f"[DEBUG] 成功读取页面内容，长度: {len(page_content)}")
+    except FileNotFoundError:
+        # 尝试加上 .html 后缀
+        try:
+            filepath_html = filepath + ".html"
+            print(f"[DEBUG] 尝试读取页面（加后缀）: {filepath_html}")
+            with open(filepath_html, 'r', encoding='utf-8') as f:
+                page_content = f.read()
+                print(f"[DEBUG] 成功读取页面内容，长度: {len(page_content)}")
+        except FileNotFoundError:
+            page_content = "<div class='error-msg'>页面不存在</div>"
+            print(f"[DEBUG] 页面不存在: {name}")
+    except Exception as e:
+        page_content = f"<div class='error-msg'>读取页面失败: {str(e)}</div>"
+        print(f"[DEBUG] 读取页面失败: {str(e)}")
+
+    # 获取当前登录用户信息
+    username = session.get("username")
+    user_info = None
+    if username in USERS:
+        user_info = USERS[username]
+        user_info["username"] = username
+
+    return render_template("index.html", user_info=user_info, page_content=page_content, page_name=page_name)
+
 if __name__ == "__main__":
     init_db()
     # 确保上传目录存在
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    # 确保 pages 目录存在
+    os.makedirs("pages", exist_ok=True)
     app.run(debug=True, host="0.0.0.0", port=5000)

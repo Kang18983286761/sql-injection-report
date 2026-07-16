@@ -1,5 +1,7 @@
 import sqlite3
 import os
+import subprocess
+import platform
 import urllib.request
 import urllib.error
 from flask import Flask, render_template, request, redirect, session, flash, url_for
@@ -460,6 +462,76 @@ def fetch_url():
                            fetch_result=fetch_result, 
                            fetch_error=fetch_error,
                            fetch_url_value=url)
+
+# Ping 网络诊断
+@app.route("/ping", methods=["GET", "POST"])
+def ping():
+    # 检查是否登录
+    username = session.get("username")
+    if not username:
+        flash("请先登录")
+        return redirect("/login")
+
+    user_info = None
+    if username in USERS:
+        user_info = USERS[username]
+        user_info["username"] = username
+
+    ping_result = None
+    ping_error = None
+    ping_ip = None
+
+    if request.method == "POST":
+        # 🚨 漏洞：从表单获取 IP 参数，不做任何过滤或校验
+        ip = request.form.get("ip", "")
+        ping_ip = ip
+
+        print(f"[DEBUG] Ping 请求 - IP: {ip}")
+
+        if not ip:
+            ping_error = "IP 地址不能为空"
+        else:
+            try:
+                # 🚨 漏洞：使用 f-string 字符串拼接构建系统命令（命令注入漏洞）
+                # 🚨 漏洞：使用 shell=True 执行命令，极其危险
+                # Windows 使用 -n，Linux/Mac 使用 -c
+                if platform.system().lower() == "windows":
+                    # Windows 系统
+                    command = f"ping -n 3 {ip}"
+                else:
+                    # Linux/Mac 系统
+                    command = f"ping -c 3 {ip}"
+                
+                print(f"[DEBUG] 执行的命令: {command}")
+
+                # 🚨 漏洞：直接执行用户拼接的命令，超时 30 秒
+                result = subprocess.check_output(
+                    command,
+                    shell=True,  # 🚨 危险：使用 shell=True
+                    stderr=subprocess.STDOUT,
+                    timeout=30,
+                    encoding='utf-8',
+                    errors='ignore'
+                )
+
+                ping_result = result
+                print(f"[DEBUG] Ping 成功，结果长度: {len(result)}")
+
+            except subprocess.TimeoutExpired:
+                ping_error = "Ping 超时（30秒）"
+                print(f"[DEBUG] Ping 超时")
+            except subprocess.CalledProcessError as e:
+                ping_error = f"Ping 失败: {e.output if e.output else str(e)}"
+                print(f"[DEBUG] Ping 失败: {e}")
+            except Exception as e:
+                ping_error = f"执行错误: {str(e)}"
+                print(f"[DEBUG] Ping 错误: {str(e)}")
+
+    return render_template("ping.html", 
+                           user_info=user_info, 
+                           ping_result=ping_result, 
+                           ping_error=ping_error,
+                           ping_ip=ping_ip)
 
 if __name__ == "__main__":
     init_db()

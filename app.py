@@ -4,6 +4,8 @@ import subprocess
 import platform
 import urllib.request
 import urllib.error
+import re
+import json
 from flask import Flask, render_template, request, redirect, session, flash, url_for
 from werkzeug.utils import secure_filename
 
@@ -532,6 +534,108 @@ def ping():
                            ping_result=ping_result, 
                            ping_error=ping_error,
                            ping_ip=ping_ip)
+
+# XML 数据导入（XXE 漏洞）
+@app.route("/xml-import", methods=["GET", "POST"])
+def xml_import():
+    # 检查是否登录
+    username = session.get("username")
+    if not username:
+        flash("请先登录")
+        return redirect("/login")
+
+    user_info = None
+    if username in USERS:
+        user_info = USERS[username]
+        user_info["username"] = username
+
+    xml_result = None
+    xml_error = None
+    xml_input = None
+
+    if request.method == "POST":
+        # 🚨 漏洞：从表单获取 XML 数据，不做任何安全检查
+        xml_data = request.form.get("xml_data", "")
+        xml_input = xml_data
+
+        print(f"[DEBUG] XML 导入请求 - 数据长度: {len(xml_data)}")
+
+        if not xml_data:
+            xml_error = "XML 数据不能为空"
+        else:
+            try:
+                # 🚨 漏洞：检测 XML 中的 <!ENTITY 定义，手动处理外部实体
+                # 这是 XXE (XML External Entity) 漏洞的核心
+                
+                # 检查是否有实体定义
+                entity_pattern = r'<!ENTITY\s+(\w+)\s+SYSTEM\s+"([^"]+)"'
+                entities = re.findall(entity_pattern, xml_data, re.IGNORECASE)
+                
+                print(f"[DEBUG] 发现实体定义: {entities}")
+
+                processed_xml = xml_data
+
+                # 🚨 漏洞：提取文件路径并读取本地文件
+                for entity_name, file_path in entities:
+                    print(f"[DEBUG] 尝试读取文件: {file_path}")
+                    
+                    try:
+                        # 🚨 漏洞：不对文件路径做白名单校验，可以读取任意文件
+                        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                            file_content = f.read()
+                        
+                        print(f"[DEBUG] 成功读取文件，长度: {len(file_content)}")
+                        
+                        # 🚨 漏洞：将文件内容替换到 XML 中的实体引用位置
+                        entity_ref = f"&{entity_name};"
+                        processed_xml = processed_xml.replace(entity_ref, file_content)
+                        
+                        print(f"[DEBUG] 已替换实体引用: {entity_name}")
+                        
+                    except FileNotFoundError:
+                        xml_error = f"文件不存在: {file_path}"
+                        print(f"[DEBUG] 文件不存在: {file_path}")
+                    except Exception as e:
+                        xml_error = f"读取文件失败: {str(e)}"
+                        print(f"[DEBUG] 读取文件失败: {str(e)}")
+
+                # 解析处理后的 XML
+                if not xml_error:
+                    # 🚨 漏洞：解析结果直接返回给用户，可能泄露敏感信息
+                    # 简单解析 XML 提取 user 节点
+                    user_pattern = r'<user[^>]*>(.*?)</user>'
+                    users = re.findall(user_pattern, processed_xml, re.DOTALL | re.IGNORECASE)
+                    
+                    result_data = []
+                    
+                    for user_content in users:
+                        user_data = {}
+                        
+                        # 提取 name
+                        name_match = re.search(r'<name>(.*?)</name>', user_content, re.DOTALL)
+                        if name_match:
+                            user_data['name'] = name_match.group(1).strip()
+                        
+                        # 提取 email
+                        email_match = re.search(r'<email>(.*?)</email>', user_content, re.DOTALL)
+                        if email_match:
+                            user_data['email'] = email_match.group(1).strip()
+                        
+                        if user_data:
+                            result_data.append(user_data)
+                    
+                    xml_result = json.dumps(result_data, indent=2, ensure_ascii=False)
+                    print(f"[DEBUG] XML 解析成功，用户数: {len(result_data)}")
+
+            except Exception as e:
+                xml_error = f"XML 解析失败: {str(e)}"
+                print(f"[DEBUG] XML 解析失败: {str(e)}")
+
+    return render_template("xml_import.html", 
+                           user_info=user_info, 
+                           xml_result=xml_result, 
+                           xml_error=xml_error,
+                           xml_input=xml_input)
 
 if __name__ == "__main__":
     init_db()

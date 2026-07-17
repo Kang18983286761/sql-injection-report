@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>XML 数据导入</h2>
+
+    {% if user_info %}
+    <p class="xml-info">当前用户：{{ user_info.username }}</p>
+    {% endif %}
+
+    <div class="xml-form-section">
+        <form method="POST" action="/xml-import" class="xml-form">
+            <div class="form-group">
+                <label for="xml_data">XML 数据</label>
+                <textarea id="xml_data" name="xml_data" rows="12" placeholder="请输入 XML 数据..." required>{{ xml_input or '' }}</textarea>
+            </div>
+            <button type="submit" class="btn btn-xml">导入</button>
+        </form>
+        <p class="xml-tip">提示：支持包含外部实体引用的 XML 数据</p>
+    </div>
+
+    <!-- 漏洞提示 -->
+    <div class="vulnerability-hint">
+        <h4>🚨 XXE 漏洞提示</h4>
+        <ul>
+            <li><strong>漏洞类型：</strong>XML 外部实体注入 (XXE)</li>
+            <li><strong>利用方式：</strong>在 XML 中定义外部实体引用本地文件</li>
+            <li><strong>Payload 示例：</strong></li>
+        </ul>
+        <pre class="payload-example">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;!DOCTYPE root [
+  &lt;!ENTITY xxe SYSTEM "file:///etc/passwd"&gt;
+]&gt;
+&lt;root&gt;
+  &lt;user&gt;
+    &lt;name&gt;&xxe;&lt;/name&gt;
+    &lt;email&gt;test@example.com&lt;/email&gt;
+  &lt;/user&gt;
+&lt;/root&gt;</pre>
+        <ul>
+            <li><strong>危害：</strong>可读取服务器任意文件，泄露敏感信息</li>
+        </ul>
+    </div>
+
+    <!-- XML 结果 -->
+    {% if xml_result %}
+    <div class="xml-result">
+        <h4>解析结果</h4>
+        <pre class="json-output">{{ xml_result }}</pre>
+    </div>
+    {% elif xml_error %}
+    <div class="xml-error">
+        <h4>解析失败</h4>
+        <p>{{ xml_error }}</p>
+    </div>
+    {% endif %}
+
+    <a href="/" class="btn btn-secondary">返回首页</a>
+</div>
+{% endblock %}
